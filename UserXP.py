@@ -16,6 +16,9 @@ issues = []
 with open('db/questions_answers.json', 'r+') as questions_answers_file:
     questions_answers = json.load(questions_answers_file)
 
+with open('db/reverse_questions.json', 'r+') as reverse_marking:
+    reverse = json.load(reverse_marking)
+
 if os.path.exists("db/user_responses.json"):
     with open("db/user_responses.json", 'r+') as user_responses_file:
         user_responses = json.load(user_responses_file) 
@@ -78,7 +81,7 @@ def getPosition():
     root.geometry("1290x600")
     root.title("Cyber User Awareness Test")
     root.iconbitmap("images/halo_shield.ico")
-    global v
+    global posi
 
 
     labeltext = Label(
@@ -91,8 +94,8 @@ def getPosition():
     )
     labeltext.pack()
 
-    v = StringVar()
-    v.set(-1)
+    posi = StringVar()
+    posi.set(-1)
     for value in questions_answers: 
         r = questions_answers.index(value)
 
@@ -100,7 +103,7 @@ def getPosition():
             Radiobutton(
                 root, 
                 text = value, 
-                variable = v, 
+                variable = posi, 
                 font = ("Bookman Old Style", 16),
                 value = value,
                 background= "#ffffff",
@@ -112,7 +115,7 @@ def getPosition():
         image=img3,
         relief=FLAT,
         border=0,
-        command=functools.partial(categorySelected, v)
+        command=functools.partial(categorySelected, posi)
     )
     btnnext.image = img3
     btnnext.place(x=800, y=400)
@@ -142,6 +145,7 @@ def getPosition():
 
 def categorySelected(user_r):
     search = user_r.get()
+    print(search)
     indexLevel = questions_answers.index(search)
     limit = len(questions_answers[indexLevel + 1])
     if((limit == 0) or (limit % 2 != 0)):
@@ -348,17 +352,23 @@ def questionShow(level, val, no):
 #<!----------calculate score function------------->
 def calc_score(level):
     
-    x = 0
+    f = 0
     score = 0
     limit = len(questions_answers[level])
     print(user_answers)
     for i in range(int(limit)):
         if(i % 2 != 0):
-            if user_answers[x] == questions_answers[level][i][2]:
+            if user_answers[f] == questions_answers[level][i][2]:
                 score = score + 10
-                x += 1
+                print(score)
+                if (questions_answers[level][i][0] in reverse) and (user_answers[f + 1] != questions_answers[level][i + 2][2]):
+                    score = score - 10
+                print(score)
+                print(questions_answers[level][i][0])
+                f = f + 1
             else:
                 issues.append(questions_answers[level][i - 1])
+                f = f + 1
     
     showresult(level, score)
 #<!----------calculate score function End------------->
@@ -385,7 +395,7 @@ def showresult(cat, score):
     new_entry = user_responses
     if len(user_responses) == 0:
         floor = 0
-        user_details = {"id": 1, "occupation" : v.get()}
+        user_details = {"id": 1, "occupation" : posi.get()}
         new_entry.append(user_details)
         for v in range(len(user_answers)):
             key = "Q" + str(v + 1)
@@ -400,7 +410,7 @@ def showresult(cat, score):
         floor = len(new_entry)
         prev_id = floor - 1
         user_id = user_responses[prev_id]['id'] + 1
-        user_details = {"id": user_id, "occupation" : v.get()}
+        user_details = {"id": user_id, "occupation" : posi.get()}
         new_entry.append(user_details)
         for v in range(len(user_answers)):
             key = "Q" + str(v + 1)
@@ -412,7 +422,7 @@ def showresult(cat, score):
         with open("db/user_responses.json", "w") as e:
             json.dump(new_entry, e)     
     
-    showResultWindow(score, percentage, defaults)
+    showResultWindow(score, percentage, defaults, posi.get())
 #<!----------show Result function End------------->
 
 
@@ -421,7 +431,7 @@ def showresult(cat, score):
 
 
 #<!----------show Result function------------->
-def showResultWindow(score, percentage, defaults):
+def showResultWindow(score, percentage, defaults, cat):
     clear(root)
     root.geometry("1300x600")
     root.title("Cyber User Awareness Test")
@@ -458,7 +468,7 @@ def showResultWindow(score, percentage, defaults):
         root,
         text="Get Recommendation",
         font=("CBookman Old Style", 24, "bold"),
-        command=functools.partial(showRecommendation, defaults),
+        command=functools.partial(showRecommendation, defaults, percentage, cat),
 
     )
     btnrecommend.place(x=190, y=400)
@@ -475,35 +485,38 @@ def showResultWindow(score, percentage, defaults):
     root.mainloop()
 
     #recommendation window
-def showRecommendation(defs):
+def showRecommendation(defs , percentage, cat):
     # global name
     root_rec = Tk()
-    root_rec.geometry("1000x800")
+    root_rec.geometry("1200x1000")
     root_rec.title("Cyber User Awareness Test")
     root_rec.iconbitmap("images/halo_shield.ico")
     root_rec.config(background="#ffffff")
+    
 
 
-    # recommend = ""
+    recommend_prof = ""
 
-    # if(percentage <= 50):
-    #     if(name.get() == "IT Professional" and percentage <= 50):
-    #         recommend = "Please you need to go for a User Level Training"
-    #     if(percentage <= 40):
-    #         recommend = "Please you need to go for a User Level Training, your score shows you have a very low understanding of cyber security"
-
-    # elif(percentage > 40 and percentage <= 60):
-    #     recommend = "Please embark on the new comer foundation (Awareness Level) course provided by GHCQ"
-    # else:
-    #     recommend = "You did great.  We recommend for you to take higher level (Application level) courses provided by the GHCQ"
+    if((cat == "Employee (uses computerised device)") and (percentage <= 40)):
+        recommend_prof = "Also, based on the nature of your regular engagement with computerized devices for personal and official use, We recommend you take the GCHQ user awareness training."
+    elif((cat == "Employee (uses computerised device)") and (percentage > 40)):
+        recommend_prof = "Also, based on the nature of your regular engagement with computerized devices for personal and official use, We recommend you take the GCHQ user awareness training and come and take the test again."
+    elif((cat == "Employee (no use of computerised devices)") and (percentage <= 40)):
+        recommend_prof = "Also, based on the nature of your engagement with computerized devices for personal and official use, We recommend you take the GCHQ user, family and friend awareness information."
+    elif((cat == "Employee (no use of computerised devices)") and (percentage > 40)):
+        recommend_prof = "Also, based on the nature of your engagement with computerized devices for personal and official use, We recommend you take the GCHQ user, family and friend awareness informationand and take the test again."
+    elif((cat == "IT based job") and (percentage <= 69)):
+        recommend_prof = "Also, based on the nature of your regular engagement with computerized devices for personal and official use, We recommend you take the GCHQ user, family and friend awareness informationand and take the test again."
+    else:
+        recommend_prof = "Also, based on the nature of your regular engagement with computerized devices for personal and official use, We recommend you take the GCHQ application level training"
 
     if len(defs) != 0:
         labelh = Label(
             root_rec,
-            text="Based on your answers from the survey we noticed you failed",
-            font=("Comic sans MS", 24, "bold"),
+            text="Based on your performance in the test, we hve made these observations on your knowledge in specific areas",
+            font=("Bookman Old Style", 12, "bold"),
             background="#ffffff",
-            wraplength="800"
+            wraplength= 800,
         )
         labelh.pack(pady=(0, 30))
 
@@ -516,7 +529,7 @@ def showRecommendation(defs):
             labelg = Label(
                 root_rec,
                 text=details,
-                font=("Comic sans MS", 24, "bold"),
+                font=("Bookman Old Style", 12, "bold"),
                 background="#ffffff",
                 wraplength="1000"
             )
@@ -529,7 +542,7 @@ def showRecommendation(defs):
         labeli = Label(
             root_rec,
             text=recommend,
-            font=("Comic sans MS", 24, "bold"),
+            font=("Bookman Old Style", 12, "bold"),
             background="#ffffff",
             wraplength="1000"
         )
@@ -539,42 +552,37 @@ def showRecommendation(defs):
     else:
         labelh = Label(
             root_rec,
-            text="Based on your answers from the survey we noticed you have a very high level of cyber security awareness, please keep up the Good work!",
-            font=("Comic sans MS", 24, "bold"),
+            text="Based on your performance in the test, You have a very high level of cyber security awareness, "
+                 "please keep up the Good work!",
+            font=("Bookman Old Style", 12, "bold"),
             background="#ffffff",
             wraplength="800"
         )
         labelh.pack(pady=(0, 30))
-
-    # imgexit3 = PhotoImage(file='images/exitbutton.png')
-    # btnexit = Button(
-    #     root_rec,
-    #     image=imgexit3,
-    #     relief=FLAT,
-    #     border=0,
-    #     command=functools.partial(exit, root),
-
-    # )
-    # btnexit.image = imgexit3
-    # btnexit.pack()
-    btnexit = Button(
+    
+    labelp = Label(
         root_rec,
-        text="Exit",
-        font=("Bookman Old Style", 24, "bold"),
-        command=root_rec.destroy
-
+        text=recommend_prof,
+        font=("Bookman Old Style", 12, "bold"),
+        background="#ffffff",
+        wraplength="800"
     )
-    btnexit.place(x=500, y=700)
+    labelp.pack(pady=(0, 30))
+
+
+    imgfin = PhotoImage (file='images/exitbutton.png', master = root_rec)
+    btnfin = Button(
+        root_rec,
+        image = imgfin,
+        relief=FLAT,
+        border=0,
+        command = root_rec.destroy
+    )
+    btnfin.image = imgfin
+    btnfin.pack()
 
     root_rec.mainloop()
 #<!----------show Result window End------------->
-
-
-
-
-
-
-
 
 
 
